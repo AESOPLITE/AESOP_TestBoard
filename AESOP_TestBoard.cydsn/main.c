@@ -12,6 +12,20 @@
 #include <project.h>
 #include "stdio.h"
 
+volatile unsigned int Voltage1, Voltage2;
+
+CY_ISR(ISRCh1)
+{
+    if (ADC_SAR_Ch1_IsEndConversion(ADC_SAR_Ch1_RETURN_STATUS)) Voltage1 = (unsigned int)ADC_SAR_Ch1_GetResult16();
+    else Voltage1 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
+}
+
+CY_ISR(ISRCh2)
+{
+    if (ADC_SAR_Ch2_IsEndConversion(ADC_SAR_Ch2_RETURN_STATUS)) Voltage2 = (unsigned int)ADC_SAR_Ch2_GetResult16();
+    else Voltage2 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
+}
+
 #if defined (__GNUC__)
     /* Add an explicit reference to the floating point printf library */
     /* to allow the usage of floating point conversion specifiers. */
@@ -24,7 +38,7 @@
 char8 *parity[] = { "None", "Odd", "Even", "Mark", "Space" };
 char8 *stop[] = { "1", "1.5", "2" };
 
-unsigned int Voltage1, Voltage2;
+
 
 int main()
 {
@@ -48,7 +62,17 @@ int main()
     VDAC8_Ch2_Start();
     VDAC8_Ch2_SetValue(valDAC[1]);
     LCD_Char_1_Start();
-    ADC_SAR_Seq_Start();
+//    ADC_SAR_Seq_Start();
+    
+//    ADC_SAR_Ch1_IRQ_Enable();
+    ADC_SAR_Ch1_IRQ_StartEx(ISRCh1);
+    ADC_SAR_Ch1_Start();
+    
+//    ADC_SAR_Ch2_IRQ_Enable();
+    ADC_SAR_Ch2_IRQ_StartEx(ISRCh2);
+    ADC_SAR_Ch2_Start();
+    
+
     Count7_1_Start();
 
     LCD_Char_1_ClearDisplay();
@@ -71,10 +95,15 @@ int main()
     int cnt = 0;
     int dataRec = 0;
     int enable = 0;
+    
+    uint8 eocRegBits = 3; //bits needed for ADC reads to be finished
     for(;;)
     {
-        if(Status_Reg_1_Read() == 1)  // Check if the conversions are done
+        uint8 eocRegMasked = Status_Reg_1_Read() & eocRegBits; //mask bits still needed
+//        if(Status_Reg_1_Read() == 1)  // Check if the conversions are done
+        if(eocRegMasked == eocRegBits)  // Check if masked reg is all the reamining bits
         {
+            eocRegBits = 3; //bits needed for next ADC read
             if (dataRec) {
                 LCD_Char_1_Position(0u, 0u);
                 LCD_Char_1_PrintString("Count:          ");
@@ -85,8 +114,8 @@ int main()
             LCD_Char_1_PrintNumber(cnt);
             
             //Note: the voltages are read into the global variables Voltage1 and Voltage2 in the SAR ISRs
-            Voltage1 = ADC_SAR_Seq_GetResult16(0);
-            Voltage2 = ADC_SAR_Seq_GetResult16(1);
+//            Voltage1 = ADC_SAR_Seq_GetResult16(0);
+//            Voltage2 = ADC_SAR_Seq_GetResult16(1);
             
             if (Voltage1 > 999) {
                 LCD_Char_1_Position(1u, strlen("A1="));
@@ -123,6 +152,8 @@ int main()
                 USBUART_PutData(pData, 4);
             }
         } 
+        else if(1 == eocRegMasked) eocRegBits=2;
+        else if(2 == eocRegMasked) eocRegBits=1;
         
         if(USBUART_DataIsReady() != 0u)               /* Check for input data from PC */
         {   
