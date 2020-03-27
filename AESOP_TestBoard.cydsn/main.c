@@ -14,17 +14,20 @@
 
 volatile unsigned int Voltage1, Voltage2;
 
-CY_ISR(ISRCh1)
-{
-    if (ADC_SAR_Ch1_IsEndConversion(ADC_SAR_Ch1_RETURN_STATUS)) Voltage1 = (unsigned int)ADC_SAR_Ch1_GetResult16();
-    else Voltage1 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
-}
-
-CY_ISR(ISRCh2)
-{
-    if (ADC_SAR_Ch2_IsEndConversion(ADC_SAR_Ch2_RETURN_STATUS)) Voltage2 = (unsigned int)ADC_SAR_Ch2_GetResult16();
-    else Voltage2 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
-}
+//CY_ISR(ISRCh1)
+//{
+////    extern volatile unsigned int Voltage1;
+//    if (ADC_SAR_Ch1_IsEndConversion(ADC_SAR_Ch1_RETURN_STATUS)) Voltage1 = (unsigned int)ADC_SAR_Ch1_GetResult16();
+//    else Voltage1 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
+////    Voltage1 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
+//}
+//
+//CY_ISR(ISRCh2)
+//{
+//    if (ADC_SAR_Ch2_IsEndConversion(ADC_SAR_Ch2_RETURN_STATUS)) Voltage2 = (unsigned int)ADC_SAR_Ch2_GetResult16();
+//    else Voltage2 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
+////    Voltage2 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
+//}
 
 #if defined (__GNUC__)
     /* Add an explicit reference to the floating point printf library */
@@ -64,13 +67,16 @@ int main()
     LCD_Char_1_Start();
 //    ADC_SAR_Seq_Start();
     
-//    ADC_SAR_Ch1_IRQ_Enable();
-    ADC_SAR_Ch1_IRQ_StartEx(ISRCh1);
     ADC_SAR_Ch1_Start();
+    ADC_SAR_Ch1_IRQ_Enable();
+//    ADC_SAR_Ch1_IRQ_StartEx(ISRCh1);
     
-//    ADC_SAR_Ch2_IRQ_Enable();
-    ADC_SAR_Ch2_IRQ_StartEx(ISRCh2);
+    
+
     ADC_SAR_Ch2_Start();
+    ADC_SAR_Ch2_IRQ_Enable();
+//    ADC_SAR_Ch2_IRQ_StartEx(ISRCh2);
+    
     
 
     Count7_1_Start();
