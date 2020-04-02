@@ -64,23 +64,24 @@ parameter [2:0] Wnrq = 3'b110;  // Wait for the last DMA transfer to complete, a
 parameter [2:0] Fini = 3'b111;  // Send out the done signal to reset peak detectors after OR signal is gone
 
 assign RstPk = (State == Fini);
+reg [2:0] cnt;
 
 // Note: the external Count7 time must be longer than the longest conversion time.
 // This restriction could be removed if we can be sure the the EOC signal will always be received,
 // so that the state machine cannot get stuck forever in an Eoc state.
-reg GOlatch;
-always @ (State or GO or GOlatch or ChOR or EOC or NRQ or tc) begin
+reg GOlatch, TClatch;
+always @ (State or GO or GOlatch or TClatch or ChOR or EOC or NRQ or tc) begin
     case (State) 
       Wait: begin
                 if (ChOR) NextState = Dlay;
                 else NextState = Wait;
                 MUX2 = 1'b0;
                 SOC2 = 1'b0;
-                RstCt2 = 1'b1;
+                RstCt2 = 1'b0;
                 Done2 = 1'b0;
             end
       Dlay: begin
-                if (tc) begin
+                if (cnt == 3'b111) begin
                     if (GOlatch) NextState = Soc0;
                     else NextState = Fini;
                 end else NextState = Dlay;
@@ -115,14 +116,12 @@ always @ (State or GO or GOlatch or ChOR or EOC or NRQ or tc) begin
       Eoc1: begin
                 if (EOC) begin
                     NextState = Wnrq;
-                    RstCt2 = 1'b1;
                 end else if (tc) begin
                     NextState = Fini; // This is to prevent getting stuck forever here
-                    RstCt2 = 1'b0;
                 end else begin
                     NextState = Eoc1;
-                    RstCt2 = 1'b0;
                 end
+                RstCt2 = 1'b1;
                 MUX2 = 1'b1;
                 SOC2 = 1'b0;               
                 Done2 = 1'b0;
@@ -131,21 +130,16 @@ always @ (State or GO or GOlatch or ChOR or EOC or NRQ or tc) begin
                 if (NRQ) begin  
                     NextState = Fini;
                     Done2 = 1'b1;
-                    RstCt2 = 1'b1;
-                end else if (tc) begin
-                    NextState = Fini;
-                    Done2 = 1'b0;
-                    RstCt2 = 1'b0;
                 end else begin
                     NextState = Wnrq;
                     Done2 = 1'b0;
-                    RstCt2 = 1'b0;
                 end
+                RstCt2 = 1'b1;
                 MUX2 = 1'b1;
                 SOC2 = 1'b0;               
             end
       Fini: begin
-                if (!ChOR & tc) NextState = Wait;
+                if (!ChOR & TClatch) NextState = Wait;
                 else NextState = Fini;
                 MUX2 = 1'b0;
                 SOC2 = 1'b0;
@@ -158,12 +152,17 @@ end
 always @ (posedge CLK) begin
     if (Reset) begin
         State <= Wait;
+        GOlatch <= 1'b0;
     end else begin
         State <= NextState;
         if (State == Fini) begin  // Capture the GO signal if and when it arrives.
-            GOlatch <= 1'b0;          
+            GOlatch <= 1'b0;
+            if (tc) TClatch <= 1'b1;
         end else begin
+            TClatch <= 1'b0;
             if (GO) GOlatch <= 1'b1;
+            if (State == Wait) cnt <= 3'b000;
+            else cnt <= cnt + 1;
         end
     end
 end
