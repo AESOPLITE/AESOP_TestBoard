@@ -13,8 +13,8 @@
 `include "cypress.v"
 //`#end` -- edit above this line, do not edit this line
 // Generated on 03/21/2020 at 09:01
-// Component: SignalCrop
-module SignalCrop (
+// Component: SignalCrop_v1
+module SignalCrop_v1 (
 	output  Y,
 	input   A,
 	input   Clk,

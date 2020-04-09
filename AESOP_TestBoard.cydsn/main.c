@@ -99,13 +99,14 @@ int main()
     ADC_SAR_1_IRQ_Disable();
     ADC_SAR_1_Start();
     Count7_1_Start();
-    Count7_1_WritePeriod(255);
+    Count7_1_WritePeriod(63);
     SignalPrep_V1_1_Count7_1_Start();
     SignalPrep_V1_1_Count7_1_WritePeriod(4);
     SignalPrep_V1_2_Count7_1_Start();
     SignalPrep_V1_2_Count7_1_WritePeriod(4);
     Cntr8_V1_1_WritePeriod(255);  // Unfortunately the maximum period is 255, not 256
     Cntr8_V1_2_WritePeriod(255);
+    ACD_CTRL_1_WritePeriod(15);   // Sets the delay between trigger and when the ADC starts up
 
     // Pulse the reset to initialize the logic
     Control_Reg_Write(1);
@@ -222,12 +223,16 @@ int main()
                     pData[0] = 0;
                     USBUART_PutData(pData,4);
                     enable = 0;
+                    Control_Reg_Write(1);
                 }
                 if (a == 'e') { // Issue this 'e' (0x71) command to open the UART connect and start recording data
                     enable = 1;
-                    Control_Reg_Write(3);
+                    Control_Reg_Write(1);
+                    CyDmaChEnable(DMA_1_Chan, 1);
+                    Control_Reg_Write(2);
                     ch1Count = 0;
                     ch2Count = 0;
+                    
                 }
                 if (a == 'r') {
                     Control_Reg_Write(3);
