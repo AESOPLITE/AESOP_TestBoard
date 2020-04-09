@@ -15,7 +15,7 @@
 // ========================================
 `include "cypress.v"
 //`#end` -- edit above this line, do not edit this line
-// Generated on 03/25/2020 at 11:11
+// Generated on 04/04/2020 at 16:39
 // Component: ACD_CTRL
 module ACD_CTRL (
 	output  Done,
@@ -23,6 +23,7 @@ module ACD_CTRL (
 	output  RstCt,
 	output  RstPk,
 	output  SOC,
+	output [2:0] St,
 	input   ChOR,
 	input   CLK,
 	input   EOC,
@@ -53,6 +54,9 @@ assign RstCt = RstCt2;
 assign Done = Done2;
 
 reg [2:0] State, NextState;
+assign St[0] = State[0];
+assign St[1] = State[1];
+assign St[2] = State[2];
 
 parameter [2:0] Wait = 3'b000;  // Wait for a signal from either detector
 parameter [2:0] Dlay = 3'b001;  // Delay to look for the GO and for the peak detector signal to stabilize
@@ -121,7 +125,7 @@ always @ (State or GO or GOlatch or TClatch or ChOR or EOC or NRQ or tc) begin
                 end else begin
                     NextState = Eoc1;
                 end
-                RstCt2 = 1'b1;
+                RstCt2 = 1'b0;
                 MUX2 = 1'b1;
                 SOC2 = 1'b0;               
                 Done2 = 1'b0;
@@ -129,7 +133,7 @@ always @ (State or GO or GOlatch or TClatch or ChOR or EOC or NRQ or tc) begin
       Wnrq: begin
                 if (NRQ) begin  
                     NextState = Fini;
-                    Done2 = 1'b1;
+                    Done2 = 1'b1;                   
                 end else begin
                     NextState = Wnrq;
                     Done2 = 1'b0;

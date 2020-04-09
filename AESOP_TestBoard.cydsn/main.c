@@ -59,9 +59,6 @@ int main()
     uint16 count;
     uint8 buffer[BUFFER_LEN];
     char8 lineStr[20];
-    uint8 setDACnum = 0; //0 is no DAC chan, command letter will specify a channel to set with next digit -B
-    uint8 valDAC[2] = {3, 5}; //values for DAC, change init value here -B
-    uint8 headDAC[2] = {0xD1, 0xD2}; //headerr for outputting DAC values -B
     
     /* Enable Global Interrupts */
     CyGlobalIntEnable;  
@@ -77,7 +74,6 @@ int main()
                                  DMA_1__TD_TERMOUT_EN | CY_DMA_TD_INC_DST_ADR);
     CyDmaTdSetAddress(DMA_1_TD[0], LO16((uint32)ADC_SAR_1_SAR_WRK0_PTR), LO16((uint32)adc_sampleArray));
     CyDmaChSetInitialTd(DMA_1_Chan, DMA_1_TD[0]);
-    CyDmaChPriority(DMA_1_Chan, 0);
     CyDmaChEnable(DMA_1_Chan, 1);             /* Enable the DMA channel for the ADC */
     
     CyDelay(100);
@@ -88,9 +84,9 @@ int main()
     Comp_Ch1_Start();
     Comp_Ch2_Start();
     VDAC8_Ch1_Start();
-    VDAC8_Ch1_SetValue(valDAC[0]);
+    VDAC8_Ch1_SetValue(5);
     VDAC8_Ch2_Start();
-    VDAC8_Ch2_SetValue(valDAC[1]);
+    VDAC8_Ch2_SetValue(5);
     LCD_Char_1_Start();
     LCD_Char_1_ClearDisplay();
     LCD_Char_1_Position(0u, 0u);
@@ -127,8 +123,15 @@ int main()
     Control_Reg_Write(2);
     for(;;)
     {
+        uint8 dmaErr = CyDmacError();
+        if (dmaErr != 0) {
+            LCD_Char_1_Position(0u, 0u);
+            sprintf(lineStr,"DMA error: %d",dmaErr); 
+            LCD_Char_1_PrintString(lineStr); 
+        }
         if(Status_Reg_1_Read() == 1)  // Check if the conversions are done
-        {
+        {   
+            Control_Reg_Write(0);
             LCD_Char_1_Position(0u, 0u);
             sprintf(lineStr,"Cnt: %d %d %d",cnt,ch1Count,ch2Count); 
             LCD_Char_1_PrintString(lineStr); 
@@ -174,6 +177,7 @@ int main()
                 USBUART_PutData(pData, 4);
             }
             CyDmaChEnable(DMA_1_Chan, 1);             /* Re-enable the DMA channel for the ADC */
+            Control_Reg_Write(2);
         } 
         
         if(USBUART_DataIsReady() != 0u)               /* Check for input data from PC */
@@ -219,13 +223,13 @@ int main()
                     USBUART_PutData(pData,4);
                     enable = 0;
                 }
-                else if (a == 'e') { // Issue this 'e' (0x71) command to open the UART connect and start recording data
+                if (a == 'e') { // Issue this 'e' (0x71) command to open the UART connect and start recording data
                     enable = 1;
                     Control_Reg_Write(3);
                     ch1Count = 0;
                     ch2Count = 0;
                 }
-                else if (a == 'r') {
+                if (a == 'r') {
                     Control_Reg_Write(3);
                     DMA_1_DmaRelease();
                     DMA_1_Chan = DMA_1_DmaInitialize(DMA_1_BYTES_PER_BURST, DMA_1_REQUEST_PER_BURST, 
@@ -236,64 +240,6 @@ int main()
                     CyDmaTdSetAddress(DMA_1_TD[0], LO16((uint32)ADC_SAR_1_SAR_WRK0_PTR), LO16((uint32)adc_sampleArray));
                     CyDmaChSetInitialTd(DMA_1_Chan, DMA_1_TD[0]);
                     CyDmaChEnable(DMA_1_Chan, 1); 
-                }
-                else if (a == 'a') //command to set DAC channel 1 -B
-                {
-                    setDACnum = 1;
-                    if (count > 1)
-                    {
-                        a = buffer[1];
-                        if (isdigit(a))
-                        {
-                            valDAC[0] = a - '0'; 
-                            VDAC8_Ch1_SetValue(valDAC[0]);
-                            while(USBUART_CDCIsReady() == 0u); 
-                            USBUART_PutData(headDAC, 2);
-                            while(USBUART_CDCIsReady() == 0u); 
-                            USBUART_PutData(valDAC, 2);                            
-                        }
-                        setDACnum = 0;
-                    }
-                }
-                else if (a == 'b') //command to set DAC channel 2 -B
-                {
-                    setDACnum = 2;
-                    if (count > 1)
-                    {
-                        a = buffer[1];
-                        if (isdigit(a))
-                        {
-                            valDAC[1] = a - '0'; 
-                            VDAC8_Ch2_SetValue(valDAC[1]);
-                            while(USBUART_CDCIsReady() == 0u); 
-                            USBUART_PutData(headDAC, 2);
-                            while(USBUART_CDCIsReady() == 0u); 
-                            USBUART_PutData(valDAC, 2);
-                        }
-                        setDACnum = 0;
-                    }
-                }
-                else if (isdigit(a))
-                {
-                    if( 1 == setDACnum)
-                    {
-                        valDAC[0] = a - '0'; 
-                        VDAC8_Ch1_SetValue(valDAC[0]);
-                        while(USBUART_CDCIsReady() == 0u); 
-                        USBUART_PutData(headDAC, 2);
-                        while(USBUART_CDCIsReady() == 0u); 
-                        USBUART_PutData(valDAC, 2);
-                    }
-                    if( 2 == setDACnum)
-                    {
-                        valDAC[1] = a - '0'; 
-                        VDAC8_Ch2_SetValue(valDAC[1]);
-                        while(USBUART_CDCIsReady() == 0u); 
-                        USBUART_PutData(headDAC, 2);
-                        while(USBUART_CDCIsReady() == 0u); 
-                        USBUART_PutData(valDAC, 2);
-                    }
-                    setDACnum = 0;
                 }
             }          
         } 
