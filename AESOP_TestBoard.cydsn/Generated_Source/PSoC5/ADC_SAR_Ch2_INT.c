@@ -17,7 +17,7 @@
 
 #include "ADC_SAR_Ch2.h"
 
-extern volatile unsigned int Voltage2;
+
 
 /******************************************************************************
 * Custom Declarations and Variables
@@ -60,6 +60,7 @@ extern volatile unsigned int Voltage2;
         *  - add user ISR code between the following #START and #END tags
         *************************************************************************/
           /* `#START MAIN_ADC_ISR`  */
+        extern volatile unsigned int Voltage2;
         if (ADC_SAR_Ch2_IsEndConversion(ADC_SAR_Ch2_RETURN_STATUS)) Voltage2 = (unsigned int)ADC_SAR_Ch2_GetResult16();
         else Voltage2 = 0xFFFF0000; //Error code to look for in results, upper 2 bytes should be unused
           /* `#END`  */
