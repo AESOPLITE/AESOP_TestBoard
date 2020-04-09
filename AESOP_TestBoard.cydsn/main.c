@@ -77,6 +77,7 @@ int main()
                                  DMA_1__TD_TERMOUT_EN | CY_DMA_TD_INC_DST_ADR);
     CyDmaTdSetAddress(DMA_1_TD[0], LO16((uint32)ADC_SAR_1_SAR_WRK0_PTR), LO16((uint32)adc_sampleArray));
     CyDmaChSetInitialTd(DMA_1_Chan, DMA_1_TD[0]);
+    CyDmaChPriority(DMA_1_Chan, 0);
     CyDmaChEnable(DMA_1_Chan, 1);             /* Enable the DMA channel for the ADC */
     
     CyDelay(100);
